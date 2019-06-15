@@ -3,11 +3,19 @@ import React from 'react';
 import { ApolloProvider, ApolloConsumer } from 'react-apollo';
 import gql from 'graphql-tag';
 import ApolloClient from 'apollo-boost';
-import { Grid, Form, Header, Button, Message, Menu } from 'semantic-ui-react';
+import {
+  Grid,
+  Form,
+  Header,
+  Button,
+  Message,
+  Menu,
+  Dropdown
+} from 'semantic-ui-react';
 import { useField, useForm } from 'react-jeff';
 import { createContainer } from 'unstated-next';
 import useSessionStorage from 'react-use/lib/useSessionStorage';
-import { Router, Link } from '@reach/router';
+import { Router, Link, navigate, Redirect } from '@reach/router';
 
 const client = new ApolloClient({
   uri: '/graphql'
@@ -46,8 +54,8 @@ function FormCheckbox({ label, onChange, value, ...props }) {
   );
 }
 
-function LoginForm() {
-  const { setToken } = AuthContainer.useContainer();
+function LoginForm({ client }) {
+  const { token, setToken } = AuthContainer.useContainer();
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState(false);
   const email = useField({
@@ -63,33 +71,33 @@ function LoginForm() {
   });
   const form = useForm({
     fields: [email, password, remember],
-    onSubmit: () => {}
+    onSubmit: async () => {
+      setLoading(true);
+      try {
+        const { errors, data } = await client.query({
+          query: QUERY_LOGIN,
+          variables: { email: email.value, password: password.value }
+        });
+        if (errors) {
+          setError(true);
+        }
+        if (data) {
+          setToken(data.login.token);
+          navigate('/');
+        }
+      } catch (err) {
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    }
   });
+  if (token !== null) {
+    return <Redirect to="/" noThrow />;
+  }
   return (
     <Grid.Column width={4}>
       <Header content="Login" size="large" />
-      <ApolloConsumer>
-        {client => {
-          if (form.submitting) {
-            setLoading(true);
-            client
-              .query({
-                query: QUERY_LOGIN,
-                variables: { email: email.value, password: password.value }
-              })
-              .then(({ errors, data }) => {
-                if (errors) {
-                  setError(true);
-                }
-                if (data) {
-                  setToken(data.login.token);
-                }
-              })
-              .catch(() => setError(true))
-              .then(() => setLoading(false));
-          }
-        }}
-      </ApolloConsumer>
       <Form
         onSubmit={() => {
           setError(false);
@@ -126,7 +134,9 @@ function LoginPage() {
   return (
     <Grid stackable padded>
       <Grid.Row centered>
-        <LoginForm />
+        <ApolloConsumer>
+          {client => <LoginForm client={client} />}
+        </ApolloConsumer>
       </Grid.Row>
     </Grid>
   );
@@ -139,23 +149,62 @@ function useAuth() {
 
 const AuthContainer = createContainer(useAuth);
 
-function HomePage() {
+function LandingPage() {
   return (
     <Grid stackable>
       <Grid.Row>
         <Menu fluid attached="top">
           <Menu.Item position="right">
             <Link to="/login">
-              <Button content="Login" />
+              <Button content="Login" size="small" />
             </Link>
+          </Menu.Item>
+          <Menu.Item>
             <Link to="/register">
-              <Button content="Register" />
+              <Button content="Register" size="small" />
             </Link>
           </Menu.Item>
         </Menu>
       </Grid.Row>
     </Grid>
   );
+}
+
+function Dashboard() {
+  const { setToken } = AuthContainer.useContainer();
+  return (
+    <Grid stackable padded>
+      <Grid.Row verticalAlign="middle">
+        <Menu fluid>
+          <Menu.Item content="Dashboard" header />
+          <Menu.Item position="right">
+            <Dropdown icon="cog" direction="left">
+              <Dropdown.Menu
+                direction="left"
+                style={{ padding: '0.5rem 0', width: '12rem' }}
+              >
+                <Dropdown.Item content="Account" icon="user" />
+                <Dropdown.Divider />
+                <Dropdown.Item
+                  content="Logout"
+                  icon="sign out"
+                  onClick={() => setToken(null)}
+                />
+              </Dropdown.Menu>
+            </Dropdown>
+          </Menu.Item>
+        </Menu>
+      </Grid.Row>
+    </Grid>
+  );
+}
+
+function HomePage() {
+  const { token } = AuthContainer.useContainer();
+  if (token === null) {
+    return <LandingPage />;
+  }
+  return <Dashboard />;
 }
 
 function App() {
