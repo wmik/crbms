@@ -1,46 +1,37 @@
-import React, { Component } from 'react';
-import './App.css';
-
-import { ApolloProvider } from "react-apollo";
-
-import { Query } from "react-apollo";
-import gql from "graphql-tag";
-
-import ApolloClient from "apollo-boost";
+import React from 'react';
+import { ApolloProvider, Query } from 'react-apollo';
+import gql from 'graphql-tag';
+import ApolloClient from 'apollo-boost';
 
 const client = new ApolloClient({
-  uri: "/graphql"
+  uri: '/graphql'
 });
 
-const Books = () => (
-  <Query
-    query={gql`
-      {
-        books {
-            title
-        }
-      }
-    `}
-  >
-    {({ loading, error, data }) => {
-      if (loading) return <p>Loading...</p>;
-      if (error) return <p>Error :(</p>;
-
-      return <pre>{data.books[0].title}</pre>;
-    }}
-  </Query>
-);
-
-class App extends Component {
-  render() {
-    return (
-      <ApolloProvider client={client}>
-        <div className="App">
-          <Books />
-        </div>
-      </ApolloProvider>
-    );
+const QUERY_STATUS = gql`
+  {
+    status
   }
+`;
+
+function Status() {
+  return (
+    <Query query={QUERY_STATUS}>
+      {({ loading, error, data }) => {
+        if (loading) return <p>Loading...</p>;
+        if (error) return <p>Error :(</p>;
+
+        return <pre>{data.status}</pre>;
+      }}
+    </Query>
+  );
+}
+
+function App() {
+  return (
+    <ApolloProvider client={client}>
+      <Status />
+    </ApolloProvider>
+  );
 }
 
 export default App;
