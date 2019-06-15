@@ -11,10 +11,11 @@
     "apollo-server-express": "^2.6.3",
     "express": "^4.17.1",
     "graphql": "^14.3.1",
-    "nodemon": "^1.29.1"
+    "nodemon": "^1.19.1"
   },
   "devDependencies": {
-    "@babel/node": "^7.2.2"
+    "@babel/node": "^7.2.2",
+    "debug": "^4.1.1"
   },
   "scripts": {
     "watch": "cross-env NODE_ENV=dev nodemon --exec babel-node src/index.js",
