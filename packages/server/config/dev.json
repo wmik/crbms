@@ -1,0 +1,9 @@
+ {
+  "jwt": {
+    "ISSUER": "",
+    "AUDIENCE": "",
+    "SUBJECT": "",
+    "EXPIRY": "30d",
+    "ALGORITHM": "RS256"
+  }
+}
