@@ -15,7 +15,10 @@ import {
   Dropdown,
   Card,
   Container,
-  Icon
+  Icon,
+  Table,
+  Step,
+  Tab
 } from 'semantic-ui-react';
 import { useField, useForm } from 'react-jeff';
 import { createContainer } from 'unstated-next';
@@ -42,7 +45,7 @@ function FormInput({ label, icon, onChange, value, type, ...props }) {
       label={label}
       type={type}
       icon={icon}
-      iconPosition="left"
+      iconPosition={icon ? 'left' : null}
       onChange={e => onChange(e.currentTarget.value)}
       value={value}
       {...props}
@@ -249,7 +252,7 @@ const activeJobs = [
   },
   {
     id: '3',
-    clientName: 'Company',
+    clientName: 'Organization',
     expiry: dayjs()
       .add(3, 'day')
       .toISOString()
@@ -303,7 +306,7 @@ function Map({ array, children, transform = _ => _ }) {
   return React.createElement(React.Fragment, null, mapped);
 }
 
-function DefaultContent() {
+function Summary() {
   return (
     <Container>
       <Header content="Active jobs" />
@@ -312,7 +315,183 @@ function DefaultContent() {
           <ActiveJobCard />
         </Map>
       </Card.Group>
+      <Header content="Vehicle status" />
     </Container>
+  );
+}
+
+function JobsDashboard() {
+  return (
+    <React.Fragment>
+      <Link to="/jobs/create">
+        <Button content="Create new job" />
+      </Link>
+      <Table sortable celled fixed selectable>
+        <Table.Header>
+          <Table.Row>
+            <Table.HeaderCell>Client name</Table.HeaderCell>
+            <Table.HeaderCell>Total duration</Table.HeaderCell>
+            <Table.HeaderCell>Vehicle license plate</Table.HeaderCell>
+          </Table.Row>
+        </Table.Header>
+        <Table.Body>
+          <Table.Row>
+            <Table.Cell>Human client</Table.Cell>
+            <Table.Cell>3 days</Table.Cell>
+            <Table.Cell>XXX 000X</Table.Cell>
+          </Table.Row>
+        </Table.Body>
+      </Table>
+    </React.Fragment>
+  );
+}
+
+function ClientRegistrationForm() {
+  const firstName = useField({ defaultValue: '' });
+  const lastName = useField({ defaultValue: '' });
+  const id = useField({ defaultValue: '' });
+  const email = useField({ defaultValue: '' });
+  const phone = useField({ defaultValue: '' });
+  const nationality = useField({ defaultValue: '' });
+  const clientType = useField({ defaultValue: '' });
+  const organizationName = useField({ defaultValue: '' });
+  return (
+    <Grid.Column style={{ padding: '1rem' }}>
+      <Form>
+        <Header content="Personal details" />
+        <Form.Group widths="equal">
+          <FormInput label="First name" type="text" {...firstName.props} />
+          <FormInput label="Last name" type="text" {...lastName.props} />
+          <FormInput label="ID/Passport number" type="text" {...id.props} />
+        </Form.Group>
+        <Form.Select
+          label="Nationality"
+          placeholder="Select nationality"
+          options={require('./nationalities.json').map(nationality => ({
+            key: nationality.toLowerCase(),
+            value: nationality.toLowerCase(),
+            text: nationality
+          }))}
+          width={5}
+          onChange={e => nationality.props.onChange(e.currentTarget.innerText)}
+          required={nationality.props.required}
+        />
+        <Header content="Contact details" />
+        <Form.Group widths="equal">
+          <FormInput label="Email address" type="email" {...email.props} />
+          <FormInput label="Phone" type="text" {...phone.props} />
+        </Form.Group>
+        <Header content="Job details" />
+        <Form.Group widths="equal">
+          <Form.Select
+            label="Client type"
+            options={[
+              { key: 'individual', value: 'individual', text: 'Individual' },
+              {
+                key: 'organization',
+                value: 'organization',
+                text: 'Organization'
+              }
+            ]}
+            placeholder="Select client type"
+            onChange={e => clientType.props.onChange(e.currentTarget.innerText)}
+            required={clientType.props.required}
+          />
+          <FormInput
+            label="Organization name"
+            {...organizationName.props}
+            disabled={clientType.value.toLowerCase() === 'individual'}
+          />
+        </Form.Group>
+        <Button content="Next" type="button" />
+      </Form>
+    </Grid.Column>
+  );
+}
+
+function VehicleRegistration() {
+  return (
+    <Grid.Column style={{ padding: '1rem' }}>
+      <Form />
+    </Grid.Column>
+  );
+}
+
+function BillingForm() {
+  return (
+    <Grid.Column style={{ padding: '1rem' }}>
+      <Form />
+    </Grid.Column>
+  );
+}
+
+function JobRegistrationForm() {
+  return (
+    <Step.Group>
+      <Tab
+        menu={{ tabular: false, attached: false }}
+        panes={[
+          {
+            render: () => <ClientRegistrationForm />,
+            menuItem: (
+              <Step key="client">
+                <Icon name="user" />
+                <Step.Content>
+                  <Step.Title>Client</Step.Title>
+                  <Step.Description>Enter client details</Step.Description>
+                </Step.Content>
+              </Step>
+            )
+          },
+          {
+            render: () => <VehicleRegistration />,
+            menuItem: (
+              <Step key="vehicle">
+                <Icon name="car" />
+                <Step.Content>
+                  <Step.Title>Vehicle</Step.Title>
+                  <Step.Description>Enter vehicle details</Step.Description>
+                </Step.Content>
+              </Step>
+            )
+          },
+          {
+            render: () => <BillingForm />,
+            menuItem: (
+              <Step key="billing">
+                <Icon name="credit card" />
+                <Step.Content>
+                  <Step.Title>Billing</Step.Title>
+                  <Step.Description>Enter billing information</Step.Description>
+                </Step.Content>
+              </Step>
+            )
+          },
+          {
+            render: () => (
+              <Grid.Column style={{ padding: '1rem' }}>confirm</Grid.Column>
+            ),
+            menuItem: (
+              <Step key="confirm">
+                <Icon name="info" />
+                <Step.Content>
+                  <Step.Title>Confirm details</Step.Title>
+                </Step.Content>
+              </Step>
+            )
+          }
+        ]}
+      />
+    </Step.Group>
+  );
+}
+
+function JobsPage() {
+  return (
+    <Router>
+      <JobsDashboard default />
+      <JobRegistrationForm path="create" />
+    </Router>
   );
 }
 
@@ -320,7 +499,8 @@ function Content() {
   return (
     <Grid.Column width={12}>
       <Router>
-        <DefaultContent default />
+        <Summary default />
+        <JobsPage path="jobs/*" />
       </Router>
     </Grid.Column>
   );
