@@ -3,6 +3,8 @@ import React from 'react';
 import { ApolloProvider, ApolloConsumer } from 'react-apollo';
 import gql from 'graphql-tag';
 import ApolloClient from 'apollo-boost';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
 import {
   Grid,
   Form,
@@ -10,12 +12,17 @@ import {
   Button,
   Message,
   Menu,
-  Dropdown
+  Dropdown,
+  Card,
+  Container,
+  Icon
 } from 'semantic-ui-react';
 import { useField, useForm } from 'react-jeff';
 import { createContainer } from 'unstated-next';
 import useSessionStorage from 'react-use/lib/useSessionStorage';
 import { Router, Link, navigate, Redirect } from '@reach/router';
+
+dayjs.extend(relativeTime);
 
 const client = new ApolloClient({
   uri: '/graphql'
@@ -170,30 +177,164 @@ function LandingPage() {
   );
 }
 
-function Dashboard() {
+function TopNavigation() {
   const { setToken } = AuthContainer.useContainer();
+  return (
+    <Menu fluid>
+      <Menu.Item content="Application" header />
+      <Menu.Item position="right">
+        <Dropdown icon="cog" direction="left">
+          <Dropdown.Menu
+            direction="left"
+            style={{ padding: '0.5rem 0', width: '12rem' }}
+          >
+            <Dropdown.Item content="Account" icon="user" />
+            <Dropdown.Divider />
+            <Dropdown.Item
+              content="Logout"
+              icon="sign out"
+              onClick={() => setToken(null)}
+            />
+          </Dropdown.Menu>
+        </Dropdown>
+      </Menu.Item>
+    </Menu>
+  );
+}
+function SideMenu() {
+  return (
+    <Grid.Column width={4}>
+      <Menu vertical>
+        <Menu.Item>
+          <Menu.Header content="Dashboard" />
+          <Menu.Menu>
+            <Menu.Item>
+              <Link to="/jobs">Jobs</Link>
+            </Menu.Item>
+            <Menu.Item>
+              <Link to="/clients">Clients</Link>
+            </Menu.Item>
+            <Menu.Item>
+              <Link to="/vehicles">Vehicles</Link>
+            </Menu.Item>
+          </Menu.Menu>
+        </Menu.Item>
+        <Menu.Item>
+          <Menu.Header content="Settings" />
+          <Menu.Menu>
+            <Menu.Item>
+              <Link to="/settings/app">Application</Link>
+            </Menu.Item>
+          </Menu.Menu>
+        </Menu.Item>
+      </Menu>
+    </Grid.Column>
+  );
+}
+
+const activeJobs = [
+  {
+    id: '1',
+    clientName: 'Human client',
+    expiry: dayjs()
+      .add(2, 'hour')
+      .toISOString()
+  },
+  {
+    id: '2',
+    clientName: 'Another client',
+    expiry: dayjs()
+      .add(1, 'week')
+      .toISOString()
+  },
+  {
+    id: '3',
+    clientName: 'Company',
+    expiry: dayjs()
+      .add(3, 'day')
+      .toISOString()
+  }
+];
+
+function colorActiveJobCard(expiry) {
+  const [match, n, unit] = expiry.match(/(\d+) ([a-z]+)/);
+  if (unit.includes('hour') || n < 1 || !match) {
+    return 'red';
+  }
+  if (n < 5) {
+    return 'yellow';
+  }
+  return 'green';
+}
+
+function ActiveJobCard({ id, clientName, expiry }) {
+  const expiresIn = dayjs(expiry).fromNow();
+  return (
+    <Card color={colorActiveJobCard(expiresIn)}>
+      <Card.Content>
+        <Card.Header content={clientName} />
+        <Card.Meta content={`Expires ${expiresIn}`} />
+      </Card.Content>
+      <Card.Content extra>
+        <Link to={`/jobs/${id}`}>
+          <Button icon labelPosition="right">
+            <Icon name="right arrow" />
+            View
+          </Button>
+        </Link>
+      </Card.Content>
+    </Card>
+  );
+}
+
+function Map({ array, children, transform = _ => _ }) {
+  const child = React.Children.only(children);
+  const mapped = array.map((props, idx) =>
+    React.cloneElement(
+      child,
+      Object.assign(
+        {
+          key: props.id || idx
+        },
+        transform(props)
+      )
+    )
+  );
+  return React.createElement(React.Fragment, null, mapped);
+}
+
+function DefaultContent() {
+  return (
+    <Container>
+      <Header content="Active jobs" />
+      <Card.Group>
+        <Map array={activeJobs}>
+          <ActiveJobCard />
+        </Map>
+      </Card.Group>
+    </Container>
+  );
+}
+
+function Content() {
+  return (
+    <Grid.Column width={12}>
+      <Router>
+        <DefaultContent default />
+      </Router>
+    </Grid.Column>
+  );
+}
+
+function Dashboard() {
   return (
     <Grid stackable padded>
       <Grid.Row verticalAlign="middle">
-        <Menu fluid>
-          <Menu.Item content="Dashboard" header />
-          <Menu.Item position="right">
-            <Dropdown icon="cog" direction="left">
-              <Dropdown.Menu
-                direction="left"
-                style={{ padding: '0.5rem 0', width: '12rem' }}
-              >
-                <Dropdown.Item content="Account" icon="user" />
-                <Dropdown.Divider />
-                <Dropdown.Item
-                  content="Logout"
-                  icon="sign out"
-                  onClick={() => setToken(null)}
-                />
-              </Dropdown.Menu>
-            </Dropdown>
-          </Menu.Item>
-        </Menu>
+        <TopNavigation />
+      </Grid.Row>
+      <Grid.Row>
+        <SideMenu />
+        <Content />
       </Grid.Row>
     </Grid>
   );
