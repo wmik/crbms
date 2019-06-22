@@ -87,16 +87,7 @@ exports.up = function(knex) {
         .references('client_id')
         .inTable('clients')
         .onDelete('CASCADE');
-      table
-        .integer('vehicle_id')
-        .unsigned()
-        .notNullable()
-        .index();
-      table
-        .foreign('vehicle_id')
-        .references('vehicle_id')
-        .inTable('vehicles')
-        .onDelete('CASCADE');
+      table.specificType('vehicle_ids', 'INT[]').notNullable();
       table
         .integer('account_id')
         .unsigned()
