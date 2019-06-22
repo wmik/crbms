@@ -24,6 +24,7 @@ import { useField, useForm } from 'react-jeff';
 import { createContainer } from 'unstated-next';
 import useSessionStorage from 'react-use/lib/useSessionStorage';
 import { Router, Link, navigate, Redirect } from '@reach/router';
+import emailValidator from 'email-validator';
 
 dayjs.extend(relativeTime);
 
@@ -39,17 +40,30 @@ const QUERY_LOGIN = gql`
   }
 `;
 
+const QUERY_REGISTER = gql`
+  query Register($email: String!, $password: String!) {
+    register(email: $email, password: $password) {
+      id
+    }
+  }
+`;
+
 function FormInput({ label, icon, onChange, value, type, ...props }) {
   return (
-    <Form.Input
-      label={label}
-      type={type}
-      icon={icon}
-      iconPosition={icon ? 'left' : null}
-      onChange={e => onChange(e.currentTarget.value)}
-      value={value}
-      {...props}
-    />
+    <React.Fragment>
+      {props.error && (
+        <small style={{ color: '#9f3a38' }}>{props.message}</small>
+      )}
+      <Form.Input
+        label={label}
+        type={type}
+        icon={icon}
+        iconPosition={icon ? 'left' : null}
+        onChange={e => onChange(e.currentTarget.value)}
+        value={value}
+        {...props}
+      />
+    </React.Fragment>
   );
 }
 
@@ -81,7 +95,10 @@ function LoginForm({ client }) {
   });
   const form = useForm({
     fields: [email, password, remember],
-    onSubmit: async () => {
+    onSubmit: () => {}
+  });
+  React.useEffect(() => {
+    async function login() {
       setLoading(true);
       try {
         const { errors, data } = await client.query({
@@ -101,7 +118,17 @@ function LoginForm({ client }) {
         setLoading(false);
       }
     }
-  });
+    if (form.submitting && form.fieldErrors.length === 0) {
+      login();
+    }
+  }, [
+    client,
+    email.value,
+    form.fieldErrors.length,
+    form.submitting,
+    password.value,
+    setToken
+  ]);
   if (token !== null) {
     return <Redirect to="/" noThrow />;
   }
@@ -136,6 +163,9 @@ function LoginForm({ client }) {
         <FormCheckbox label="Remember me" {...remember.props} />
         <Button type="submit" content="Login" fluid />
       </Form>
+      <Header as="h4">
+        Don't have an account? <Link to="/registration">Register</Link>
+      </Header>
     </Grid.Column>
   );
 }
@@ -146,6 +176,199 @@ function LoginPage() {
       <Grid.Row centered>
         <ApolloConsumer>
           {client => <LoginForm client={client} />}
+        </ApolloConsumer>
+      </Grid.Row>
+    </Grid>
+  );
+}
+
+function validatePassword(value) {
+  let errors = [];
+
+  if (value.length < 6) {
+    errors.push('Must be at least 6 characters long');
+  }
+
+  if (!/[a-z]/.test(value)) {
+    errors.push('Must contain at least one lowercase letter');
+  }
+
+  if (!/[A-Z]/.test(value)) {
+    errors.push('Must contain at least one uppercase letter');
+  }
+
+  if (!/[0-9]/.test(value)) {
+    errors.push('Must contain at least one number');
+  }
+
+  return errors;
+}
+
+function validateConfirmPassword(value, password) {
+  let errors = [];
+
+  if (value !== password) {
+    errors.push('Must match password');
+  }
+
+  return errors;
+}
+
+function useConfirmPasswordField(password) {
+  return useField({
+    defaultValue: '',
+    required: true,
+    validations: [value => validateConfirmPassword(value, password)]
+  });
+}
+
+async function validateEmail(value) {
+  let errors = [];
+
+  if (!emailValidator.validate(value)) {
+    errors.push('Invalid email address');
+  }
+  return errors;
+}
+
+function RegistrationForm({ client }) {
+  const { token } = AuthContainer.useContainer();
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState(false);
+  const [success, setSuccess] = React.useState(false);
+  const email = useField({
+    defaultValue: '',
+    required: true,
+    validations: [validateEmail]
+  });
+  const password = useField({
+    defaultValue: '',
+    required: true,
+    validations: [validatePassword]
+  });
+  const confirmPassword = useConfirmPasswordField(password.value);
+  const termsConditions = useField({
+    defaultValue: false,
+    required: true
+  });
+  const form = useForm({
+    fields: [email, password, confirmPassword, termsConditions],
+    onSubmit: () => {}
+  });
+  React.useEffect(() => {
+    async function registerAccount() {
+      setSuccess(false);
+      setLoading(true);
+      try {
+        const { errors, data } = await client.query({
+          query: QUERY_REGISTER,
+          variables: { email: email.value, password: password.value }
+        });
+        if (errors) {
+          setError(true);
+        }
+        if (data && data.register.id) {
+          setSuccess(true);
+        }
+      } catch (err) {
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    }
+    if (form.submitting && form.fieldErrors.length === 0) {
+      registerAccount();
+    }
+  }, [
+    client,
+    email.value,
+    form.fieldErrors.length,
+    form.submitting,
+    password.value
+  ]);
+
+  React.useEffect(() => {
+    let timeoutId = null;
+    if (success) {
+      timeoutId = setTimeout(navigate, 3000, '/login');
+    }
+    return () => {
+      clearTimeout(timeoutId);
+      timeoutId = undefined;
+    };
+  }, [success]);
+  if (token !== null) {
+    return <Redirect to="/" noThrow />;
+  }
+  return (
+    <Grid.Column width={4}>
+      <Header content="Registration" size="large" />
+      <Form
+        onSubmit={() => {
+          if (form.fieldErrors.length === 0) {
+            setError(false);
+            form.props.onSubmit();
+          }
+        }}
+        loading={loading || form.submitting}
+        error={error}
+        success={success}
+      >
+        <Message success>
+          <Message.Header content="Success" />
+          <Message.Content>
+            Please wait while we redirect you to the login page{' '}
+            <Icon name="spinner" loading />
+          </Message.Content>
+        </Message>
+        <Message
+          error
+          header="Invalid credentials"
+          content="Please confirm your email address is NOT registered to an account already."
+        />
+        <FormInput
+          label="Email address"
+          type="email"
+          icon="user"
+          error={email.errors.length > 0}
+          message={email.errors.slice(0, 1)[0]}
+          {...email.props}
+        />
+        <FormInput
+          label="Password"
+          type="password"
+          icon="lock"
+          error={password.errors.length > 0}
+          message={password.errors.slice(0, 1)[0]}
+          {...password.props}
+        />
+        <FormInput
+          label="Confirm Password"
+          type="password"
+          icon="lock"
+          error={confirmPassword.errors.length > 0}
+          message={confirmPassword.errors.slice(0, 1)[0]}
+          {...confirmPassword.props}
+        />
+        <FormCheckbox
+          label="I agree to the Terms and Conditions"
+          {...termsConditions.props}
+        />
+        <Button type="submit" content="Register" fluid />
+      </Form>
+      <Header as="h4">
+        Already have an account? <Link to="/login">Login</Link>
+      </Header>
+    </Grid.Column>
+  );
+}
+
+function RegistrationPage() {
+  return (
+    <Grid stackable padded>
+      <Grid.Row centered>
+        <ApolloConsumer>
+          {client => <RegistrationForm client={client} />}
         </ApolloConsumer>
       </Grid.Row>
     </Grid>
@@ -170,7 +393,7 @@ function LandingPage() {
             </Link>
           </Menu.Item>
           <Menu.Item>
-            <Link to="/register">
+            <Link to="/registration">
               <Button content="Register" size="small" />
             </Link>
           </Menu.Item>
@@ -535,6 +758,7 @@ function App() {
         <Router>
           <HomePage default />
           <LoginPage path="login" />
+          <RegistrationPage path="registration" />
         </Router>
       </AuthContainer.Provider>
     </ApolloProvider>
