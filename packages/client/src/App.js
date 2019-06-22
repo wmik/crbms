@@ -1,6 +1,6 @@
 import 'semantic-ui-css/semantic.min.css';
 import React from 'react';
-import { ApolloProvider, ApolloConsumer } from 'react-apollo';
+import { ApolloProvider, ApolloConsumer, Query } from 'react-apollo';
 import gql from 'graphql-tag';
 import ApolloClient from 'apollo-boost';
 import dayjs from 'dayjs';
@@ -18,7 +18,9 @@ import {
   Icon,
   Table,
   Step,
-  Tab
+  Tab,
+  Dimmer,
+  Loader
 } from 'semantic-ui-react';
 import { useField, useForm } from 'react-jeff';
 import { createContainer } from 'unstated-next';
@@ -543,12 +545,44 @@ function Summary() {
   );
 }
 
+function JobDetailsRow({ clientId, vehicleIds, startDate, endDate }) {
+  return (
+    <Table.Row>
+      <Table.Cell>{clientId}</Table.Cell>
+      <Table.Cell>
+        {dayjs(parseInt(endDate))
+          .from(dayjs(parseInt(startDate)))
+          .replace('in', '')
+          .trim()}
+      </Table.Cell>
+      <Table.Cell>{vehicleIds.join(',')}</Table.Cell>
+    </Table.Row>
+  );
+}
+
+const QUERY_JOBS = gql`
+  query Jobs {
+    jobs {
+      results {
+        id
+        clientId
+        vehicleIds
+        startDate
+        endDate
+      }
+    }
+  }
+`;
+
 function JobsDashboard() {
+  const [loading, setLoading] = React.useState(true);
+  const { token } = AuthContainer.useContainer();
   return (
     <React.Fragment>
       <Link to="/jobs/create">
         <Button content="Create new job" />
       </Link>
+      <PageLoader active={loading} />
       <Table sortable celled fixed selectable>
         <Table.Header>
           <Table.Row>
@@ -558,11 +592,195 @@ function JobsDashboard() {
           </Table.Row>
         </Table.Header>
         <Table.Body>
+          <Query
+            query={QUERY_JOBS}
+            context={{
+              headers: {
+                Authorization: token
+              }
+            }}
+          >
+            {({ data, loading, error }) => {
+              if (loading) {
+                setLoading(true);
+              }
+              if (error) {
+                setLoading(false);
+                return null;
+              }
+              if (data && data.jobs && data.jobs.results) {
+                setLoading(false);
+                return (
+                  <Map array={data.jobs.results}>
+                    <JobDetailsRow />
+                  </Map>
+                );
+              }
+              return null;
+            }}
+          </Query>
+        </Table.Body>
+      </Table>
+    </React.Fragment>
+  );
+}
+
+function ClientDetailsRow({ firstName, lastName, email, phone, type }) {
+  return (
+    <Table.Row>
+      <Table.Cell>
+        {firstName} {lastName}
+      </Table.Cell>
+      <Table.Cell>{email}</Table.Cell>
+      <Table.Cell>{phone}</Table.Cell>
+      <Table.Cell>{type}</Table.Cell>
+    </Table.Row>
+  );
+}
+
+const QUERY_CLIENTS = gql`
+  query Clients {
+    clients {
+      results {
+        id
+        firstName
+        lastName
+        email
+        phone
+        type
+      }
+    }
+  }
+`;
+
+function ClientsDashboard() {
+  const [loading, setLoading] = React.useState(true);
+  const { token } = AuthContainer.useContainer();
+  return (
+    <React.Fragment>
+      <Link to="/clients/create">
+        <Button content="Create new client" />
+      </Link>
+      <PageLoader active={loading} />
+      <Table sortable celled fixed selectable>
+        <Table.Header>
           <Table.Row>
-            <Table.Cell>Human client</Table.Cell>
-            <Table.Cell>3 days</Table.Cell>
-            <Table.Cell>XXX 000X</Table.Cell>
+            <Table.HeaderCell>Client name</Table.HeaderCell>
+            <Table.HeaderCell>Email</Table.HeaderCell>
+            <Table.HeaderCell>Phone</Table.HeaderCell>
+            <Table.HeaderCell>Client type</Table.HeaderCell>
           </Table.Row>
+        </Table.Header>
+        <Table.Body>
+          <Query
+            query={QUERY_CLIENTS}
+            context={{
+              headers: {
+                Authorization: token
+              }
+            }}
+          >
+            {({ data, loading, error }) => {
+              if (loading) {
+                setLoading(true);
+              }
+              if (error) {
+                setLoading(false);
+                return null;
+              }
+              if (data && data.clients && data.clients.results) {
+                setLoading(false);
+                return (
+                  <Map array={data.clients.results}>
+                    <ClientDetailsRow />
+                  </Map>
+                );
+              }
+              return null;
+            }}
+          </Query>
+        </Table.Body>
+      </Table>
+    </React.Fragment>
+  );
+}
+
+function VehicleDetailsRow({ make, model, license }) {
+  return (
+    <Table.Row>
+      <Table.Cell>{make}</Table.Cell>
+      <Table.Cell>{model}</Table.Cell>
+      <Table.Cell>{license}</Table.Cell>
+    </Table.Row>
+  );
+}
+
+const QUERY_VEHICLES = gql`
+  query Vehicles {
+    vehicles {
+      results {
+        id
+        make
+        model
+        license
+      }
+    }
+  }
+`;
+
+function PageLoader({ active }) {
+  return (
+    <Dimmer active={active} style={{ height: '100%' }} inverted>
+      <Loader>Loading</Loader>
+    </Dimmer>
+  );
+}
+
+function VehiclesDashboard() {
+  const [loading, setLoading] = React.useState(true);
+  const { token } = AuthContainer.useContainer();
+  return (
+    <React.Fragment>
+      <Link to="/vehicles/create">
+        <Button content="Add a new vehicle" />
+      </Link>
+      <PageLoader active={loading} />
+      <Table sortable celled fixed selectable>
+        <Table.Header>
+          <Table.Row>
+            <Table.HeaderCell>Make</Table.HeaderCell>
+            <Table.HeaderCell>Model</Table.HeaderCell>
+            <Table.HeaderCell>License plate</Table.HeaderCell>
+          </Table.Row>
+        </Table.Header>
+        <Table.Body>
+          <Query
+            query={QUERY_VEHICLES}
+            context={{
+              headers: {
+                Authorization: token
+              }
+            }}
+          >
+            {({ data, loading, error }) => {
+              if (loading) {
+                setLoading(true);
+              }
+              if (error) {
+                setLoading(false);
+                return null;
+              }
+              if (data && data.vehicles && data.vehicles.results) {
+                setLoading(false);
+                return (
+                  <Map array={data.vehicles.results}>
+                    <VehicleDetailsRow />
+                  </Map>
+                );
+              }
+              return null;
+            }}
+          </Query>
         </Table.Body>
       </Table>
     </React.Fragment>
@@ -718,12 +936,32 @@ function JobsPage() {
   );
 }
 
+function ClientsPage() {
+  return (
+    <Router>
+      <ClientsDashboard default />
+      <ClientRegistrationForm path="create" />
+    </Router>
+  );
+}
+
+function VehiclesPage() {
+  return (
+    <Router>
+      <VehiclesDashboard default />
+      {/* <VehicleRegistrationForm path="create" /> */}
+    </Router>
+  );
+}
+
 function Content() {
   return (
     <Grid.Column width={12}>
       <Router>
         <Summary default />
         <JobsPage path="jobs/*" />
+        <ClientsPage path="clients/*" />
+        <VehiclesPage path="vehicles/*" />
       </Router>
     </Grid.Column>
   );
