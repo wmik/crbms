@@ -20,7 +20,9 @@ import {
   Step,
   Tab,
   Dimmer,
-  Loader
+  Loader,
+  Placeholder,
+  Divider
 } from 'semantic-ui-react';
 import { useField, useForm } from 'react-jeff';
 import { createContainer } from 'unstated-next';
@@ -625,16 +627,75 @@ function JobsDashboard() {
   );
 }
 
-function ClientDetailsRow({ firstName, lastName, email, phone, type }) {
+function LoadingCard() {
   return (
-    <Table.Row>
-      <Table.Cell>
-        {firstName} {lastName}
-      </Table.Cell>
-      <Table.Cell>{email}</Table.Cell>
-      <Table.Cell>{phone}</Table.Cell>
-      <Table.Cell>{type}</Table.Cell>
-    </Table.Row>
+    <Card>
+      <Placeholder>
+        <Placeholder.Image square />
+      </Placeholder>
+      <Card.Content>
+        <Placeholder>
+          <Placeholder.Header>
+            <Placeholder.Line length="very short" />
+            <Placeholder.Line length="medium" />
+          </Placeholder.Header>
+          <Placeholder.Paragraph>
+            <Placeholder.Line length="short" />
+          </Placeholder.Paragraph>
+        </Placeholder>
+      </Card.Content>
+      <Card.Content extra>
+        <Button disabled={true} primary>
+          View
+        </Button>
+      </Card.Content>
+    </Card>
+  );
+}
+
+function capitalize(string) {
+  return string.substring(0, 1).toUpperCase() + string.substring(1);
+}
+
+function randomValue(max = 255) {
+  return Math.floor((Math.random() * 1000) % max);
+}
+
+function generateRandomRGB() {
+  return `rgb(${randomValue()}, ${randomValue()}, ${randomValue()})`;
+}
+
+function ClientDetailsCard({ id, firstName, lastName, type }) {
+  return (
+    <Card>
+      <svg
+        width="100%"
+        height="200"
+        style={{ background: generateRandomRGB() }} //(15, 110, 145) => pastel
+      >
+        <text
+          textAnchor="middle"
+          x="50%"
+          y="50%"
+          dy="2rem"
+          fill="white"
+          fontSize="100"
+        >
+          {firstName.substring(0, 1)}
+        </text>
+      </svg>
+      <Card.Content>
+        <Card.Header>
+          {firstName} {lastName}
+        </Card.Header>
+        <Card.Meta>{capitalize(type)}</Card.Meta>
+      </Card.Content>
+      <Card.Content extra>
+        <Link to={`/clients/${id}`}>
+          <Button primary>View</Button>
+        </Link>
+      </Card.Content>
+    </Card>
   );
 }
 
@@ -645,8 +706,6 @@ const QUERY_CLIENTS = gql`
         id
         firstName
         lastName
-        email
-        phone
         type
       }
     }
@@ -654,53 +713,44 @@ const QUERY_CLIENTS = gql`
 `;
 
 function ClientsDashboard() {
-  const [loading, setLoading] = React.useState(true);
   const { token } = AuthContainer.useContainer();
   return (
     <React.Fragment>
       <Link to="/clients/create">
         <Button content="Create new client" />
       </Link>
-      <PageLoader active={loading} />
-      <Table sortable celled fixed selectable>
-        <Table.Header>
-          <Table.Row>
-            <Table.HeaderCell>Client name</Table.HeaderCell>
-            <Table.HeaderCell>Email</Table.HeaderCell>
-            <Table.HeaderCell>Phone</Table.HeaderCell>
-            <Table.HeaderCell>Client type</Table.HeaderCell>
-          </Table.Row>
-        </Table.Header>
-        <Table.Body>
-          <Query
-            query={QUERY_CLIENTS}
-            context={{
-              headers: {
-                Authorization: token
-              }
-            }}
-          >
-            {({ data, loading, error }) => {
-              if (loading) {
-                setLoading(true);
-              }
-              if (error) {
-                setLoading(false);
-                return null;
-              }
-              if (data && data.clients && data.clients.results) {
-                setLoading(false);
-                return (
-                  <Map array={data.clients.results}>
-                    <ClientDetailsRow />
-                  </Map>
-                );
-              }
+      <Divider />
+      <Card.Group>
+        <Query
+          query={QUERY_CLIENTS}
+          context={{
+            headers: {
+              Authorization: token
+            }
+          }}
+        >
+          {({ data, loading, error }) => {
+            if (loading) {
+              return (
+                <Map array={Array.from({ length: 3 }, _ => ({}))}>
+                  <LoadingCard />
+                </Map>
+              );
+            }
+            if (error) {
               return null;
-            }}
-          </Query>
-        </Table.Body>
-      </Table>
+            }
+            if (data && data.clients && data.clients.results) {
+              return (
+                <Map array={data.clients.results}>
+                  <ClientDetailsCard />
+                </Map>
+              );
+            }
+            return null;
+          }}
+        </Query>
+      </Card.Group>
     </React.Fragment>
   );
 }
