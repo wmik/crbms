@@ -34,5 +34,8 @@
     "not ie <= 11",
     "not op_mini all"
   ],
-  "proxy": "http://localhost:4000/"
+  "proxy": "http://localhost:4000/",
+  "devDependencies": {
+    "@welldone-software/why-did-you-render": "^3.2.1"
+  }
 }

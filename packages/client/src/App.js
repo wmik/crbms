@@ -1,6 +1,6 @@
 import 'semantic-ui-css/semantic.min.css';
 import React from 'react';
-import { ApolloProvider, ApolloConsumer, Query } from 'react-apollo';
+import { ApolloProvider, ApolloConsumer, Query, Mutation } from 'react-apollo';
 import gql from 'graphql-tag';
 import ApolloClient from 'apollo-boost';
 import dayjs from 'dayjs';
@@ -30,6 +30,15 @@ import useSessionStorage from 'react-use/lib/useSessionStorage';
 import { Router, Link, navigate, Redirect } from '@reach/router';
 import emailValidator from 'email-validator';
 
+if (process.env.NODE_ENV !== 'production') {
+  console.log('[info]:', 'mounting `why-did-you-render`');
+  const whyDidYouRender = require('@welldone-software/why-did-you-render');
+  whyDidYouRender(React);
+  ClientRegistrationForm.whyDidYouRender = true;
+  Form.Input.whyDidYouRender = true;
+  FormInput.whyDidYouRender = true;
+}
+
 dayjs.extend(relativeTime);
 
 const client = new ApolloClient({
@@ -52,30 +61,48 @@ const QUERY_REGISTER = gql`
   }
 `;
 
-function FormInput({ label, icon, onChange, value, type, ...props }) {
+const MemoizedFormInput = React.memo(Form.Input);
+
+function FormInput({
+  label,
+  icon,
+  onChange,
+  onBlur,
+  onFocus,
+  value,
+  type,
+  error,
+  message,
+  required,
+  disabled
+}) {
+  const handleChange = e => onChange(e.currentTarget.value);
   return (
     <React.Fragment>
-      {props.error && (
-        <small style={{ color: '#9f3a38' }}>{props.message}</small>
-      )}
-      <Form.Input
+      {error && <small style={{ color: '#9f3a38' }}>{message}</small>}
+      <MemoizedFormInput
         label={label}
         type={type}
         icon={icon}
         iconPosition={icon ? 'left' : null}
-        onChange={e => onChange(e.currentTarget.value)}
+        onChange={handleChange}
         value={value}
-        {...props}
+        error={error}
+        required={required}
+        disabled={disabled}
+        onBlur={onBlur}
+        onFocus={onFocus}
       />
     </React.Fragment>
   );
 }
 
 function FormCheckbox({ label, onChange, value, ...props }) {
+  const handleChange = () => onChange(!value);
   return (
     <Form.Checkbox
       label={label}
-      onChange={() => onChange(!value)}
+      onChange={handleChange}
       checked={value}
       {...props}
     />
@@ -720,7 +747,7 @@ function ClientsDashboard() {
         <Button content="Create new client" />
       </Link>
       <Divider />
-      <Card.Group>
+      <Card.Group itemsPerRow={3}>
         <Query
           query={QUERY_CLIENTS}
           context={{
@@ -837,65 +864,205 @@ function VehiclesDashboard() {
   );
 }
 
-function ClientRegistrationForm() {
-  const firstName = useField({ defaultValue: '' });
-  const lastName = useField({ defaultValue: '' });
-  const id = useField({ defaultValue: '' });
-  const email = useField({ defaultValue: '' });
-  const phone = useField({ defaultValue: '' });
+const MUTATION_ADD_CLIENT = gql`
+  mutation AddClient($data: ClientInput!) {
+    addClient(data: $data) {
+      id
+    }
+  }
+`;
+
+function useCustomField(opts) {
+  const field = useField(opts);
+  const onChangeFn = field.props.onChange;
+  const onChange = React.useCallback(onChangeFn, []);
+  const props = Object.assign({}, field.props, { onChange });
+  return Object.assign({}, field, { props });
+}
+
+const FormInputMemo = React.memo(FormInput);
+
+function ClientFirstName({ firstNameRef }) {
+  const field = useCustomField({ defaultValue: '' });
+  firstNameRef.current = { name: 'firstName', field };
+  return <FormInputMemo label="First name" type="text" {...field.props} />;
+}
+
+function ClientLastName({ lastNameRef }) {
+  const field = useCustomField({ defaultValue: '' });
+  lastNameRef.current = { name: 'lastName', field };
+  return <FormInputMemo label="Last name" type="text" {...field.props} />;
+}
+
+function ClientIdentification({ idRef }) {
+  const field = useCustomField({ defaultValue: '' });
+  idRef.current = { name: 'identificationNumber', field };
+  return (
+    <FormInputMemo label="ID/Passport number" type="text" {...field.props} />
+  );
+}
+
+function ClientNationality({ fieldsRef }) {
   const nationality = useField({ defaultValue: '' });
+  const nationalityRef = React.useRef();
+  nationalityRef.current = { name: 'nationality', field: nationality };
+  fieldsRef.current = fieldsRef.current.concat([nationalityRef]);
+  return (
+    <Form.Select
+      label="Nationality"
+      placeholder="Select nationality"
+      options={require('./nationalities.json').map(nationality => ({
+        key: nationality.toLowerCase(),
+        value: nationality.toLowerCase(),
+        text: nationality
+      }))}
+      width={5}
+      onChange={e => nationality.props.onChange(e.currentTarget.innerText)}
+      required={nationality.props.required}
+    />
+  );
+}
+
+function ClientPersonalDetails({ fieldsRef }) {
+  const firstNameRef = React.useRef();
+  const lastNameRef = React.useRef();
+  const idRef = React.useRef();
+  fieldsRef.current = fieldsRef.current.concat([
+    firstNameRef,
+    lastNameRef,
+    idRef
+  ]);
+  return (
+    <React.Fragment>
+      <Header content="Personal details" />
+      <Form.Group widths="equal">
+        <ClientFirstName firstNameRef={firstNameRef} />
+        <ClientLastName lastNameRef={lastNameRef} />
+        <ClientIdentification idRef={idRef} />
+      </Form.Group>
+    </React.Fragment>
+  );
+}
+
+function ClientEmail({ emailRef }) {
+  const field = useField({ defaultValue: '' });
+  emailRef.current = { name: 'email', field };
+  return <FormInputMemo label="Email address" type="email" {...field.props} />;
+}
+
+function ClientPhone({ phoneRef }) {
+  const field = useField({ defaultValue: '' });
+  phoneRef.current = { name: 'phone', field };
+  return <FormInputMemo label="Phone" type="text" {...field.props} />;
+}
+
+function ClientContactDetails({ fieldsRef }) {
+  const emailRef = React.useRef();
+  const phoneRef = React.useRef();
+  fieldsRef.current = fieldsRef.current.concat([emailRef, phoneRef]);
+  return (
+    <React.Fragment>
+      <Header content="Contact details" />
+      <Form.Group widths="equal">
+        <ClientEmail emailRef={emailRef} />
+        <ClientPhone phoneRef={phoneRef} />
+      </Form.Group>
+    </React.Fragment>
+  );
+}
+
+const FormSelectMemo = React.memo(Form.Select);
+
+function ClientJobDetails({ fieldsRef }) {
+  const clientTypeRef = React.useRef();
   const clientType = useField({ defaultValue: '' });
+  clientTypeRef.current = { name: 'type', field: clientType };
+  fieldsRef.current = fieldsRef.current.concat([clientTypeRef]);
   const organizationName = useField({ defaultValue: '' });
   return (
-    <Grid.Column style={{ padding: '1rem' }}>
-      <Form>
-        <Header content="Personal details" />
-        <Form.Group widths="equal">
-          <FormInput label="First name" type="text" {...firstName.props} />
-          <FormInput label="Last name" type="text" {...lastName.props} />
-          <FormInput label="ID/Passport number" type="text" {...id.props} />
-        </Form.Group>
-        <Form.Select
-          label="Nationality"
-          placeholder="Select nationality"
-          options={require('./nationalities.json').map(nationality => ({
-            key: nationality.toLowerCase(),
-            value: nationality.toLowerCase(),
-            text: nationality
-          }))}
-          width={5}
-          onChange={e => nationality.props.onChange(e.currentTarget.innerText)}
-          required={nationality.props.required}
+    <React.Fragment>
+      <Header content="Job details" />
+      <Form.Group widths="equal">
+        <FormSelectMemo
+          label="Client type"
+          options={[
+            {
+              key: 'individual',
+              value: 'individual',
+              text: 'Individual'
+            },
+            {
+              key: 'organization',
+              value: 'organization',
+              text: 'Organization'
+            }
+          ]}
+          placeholder="Select client type"
+          onChange={e => clientType.props.onChange(e.currentTarget.innerText)}
+          required={clientType.props.required}
         />
-        <Header content="Contact details" />
-        <Form.Group widths="equal">
-          <FormInput label="Email address" type="email" {...email.props} />
-          <FormInput label="Phone" type="text" {...phone.props} />
-        </Form.Group>
-        <Header content="Job details" />
-        <Form.Group widths="equal">
-          <Form.Select
-            label="Client type"
-            options={[
-              { key: 'individual', value: 'individual', text: 'Individual' },
-              {
-                key: 'organization',
-                value: 'organization',
-                text: 'Organization'
-              }
-            ]}
-            placeholder="Select client type"
-            onChange={e => clientType.props.onChange(e.currentTarget.innerText)}
-            required={clientType.props.required}
-          />
-          <FormInput
-            label="Organization name"
-            {...organizationName.props}
-            disabled={clientType.value.toLowerCase() === 'individual'}
-          />
-        </Form.Group>
-        <Button content="Next" type="button" />
-      </Form>
+        <FormInputMemo
+          label="Organization name"
+          {...organizationName.props}
+          disabled={clientType.value.toLowerCase() === 'individual'}
+        />
+      </Form.Group>
+    </React.Fragment>
+  );
+}
+
+function ClientRegistrationForm({ children }) {
+  const { token } = AuthContainer.useContainer();
+  const fieldsRef = React.useRef([]);
+  const clientRegistrationForm = useForm({
+    fields: fieldsRef.current,
+    onSubmit: () => {}
+  });
+  return (
+    <Grid.Column style={{ padding: '1rem' }}>
+      <Mutation
+        mutation={MUTATION_ADD_CLIENT}
+        context={{
+          headers: {
+            Authorization: token
+          }
+        }}
+      >
+        {(addClient, { loading, data }) => {
+          if (data && data.addClient.id) {
+            navigate('/clients');
+          }
+          return (
+            <Form
+              onSubmit={e => {
+                e.preventDefault();
+                clientRegistrationForm.props.onSubmit();
+                addClient({
+                  variables: {
+                    data: fieldsRef.current.reduce((object, ref) => {
+                      if (ref.current.name === 'type') {
+                        object[
+                          ref.current.name
+                        ] = ref.current.field.value.toLowerCase();
+                      } else {
+                        object[ref.current.name] = ref.current.field.value;
+                      }
+                      return object;
+                    }, {})
+                  }
+                });
+              }}
+              loading={loading}
+            >
+              <ClientPersonalDetails fieldsRef={fieldsRef} />
+              <ClientNationality fieldsRef={fieldsRef} />
+              <ClientContactDetails fieldsRef={fieldsRef} />
+              <ClientJobDetails fieldsRef={fieldsRef} />
+              {children || <Button content="Submit" type="submit" />}
+            </Form>
+          );
+        }}
+      </Mutation>
     </Grid.Column>
   );
 }
@@ -923,7 +1090,11 @@ function JobRegistrationForm() {
         menu={{ tabular: false, attached: false }}
         panes={[
           {
-            render: () => <ClientRegistrationForm />,
+            render: () => (
+              <ClientRegistrationForm>
+                <Button content="Next" type="button" />
+              </ClientRegistrationForm>
+            ),
             menuItem: (
               <Step key="client">
                 <Icon name="user" />
