@@ -1,8 +1,8 @@
 import 'semantic-ui-css/semantic.min.css';
 import React from 'react';
 import { ApolloProvider, ApolloConsumer, Query, Mutation } from 'react-apollo';
-import gql from 'graphql-tag';
-import ApolloClient from 'apollo-boost';
+import { setContext } from 'apollo-link-context';
+import { ApolloClient, HttpLink, InMemoryCache, gql } from 'apollo-boost';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import {
@@ -41,8 +41,23 @@ if (process.env.NODE_ENV !== 'production') {
 
 dayjs.extend(relativeTime);
 
-const client = new ApolloClient({
+const httpLink = new HttpLink({
   uri: '/graphql'
+});
+
+const cache = new InMemoryCache();
+
+const authLink = setContext((_, { headers }) => {
+  const token = sessionStorage.getItem('token') || '';
+  const modifiedHeaders = Object.assign({}, headers, {
+    Authorization: token.replace(/"/g, '')
+  });
+  return Object.assign({}, { headers: modifiedHeaders });
+});
+
+const client = new ApolloClient({
+  link: authLink.concat(httpLink),
+  cache
 });
 
 const QUERY_LOGIN = gql`
@@ -612,7 +627,6 @@ const QUERY_JOBS = gql`
 function JobsDashboard() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(false);
-  const { token } = AuthContainer.useContainer();
   return (
     <React.Fragment>
       <Link to="/jobs/create">
@@ -629,14 +643,7 @@ function JobsDashboard() {
           </Table.Row>
         </Table.Header>
         <Table.Body>
-          <Query
-            query={QUERY_JOBS}
-            context={{
-              headers: {
-                Authorization: token
-              }
-            }}
-          >
+          <Query query={QUERY_JOBS}>
             {({ data, loading, error }) => {
               setError(false);
               if (loading) {
@@ -750,7 +757,6 @@ const QUERY_CLIENTS = gql`
 `;
 
 function ClientsDashboard() {
-  const { token } = AuthContainer.useContainer();
   const [error, setError] = React.useState(false);
   return (
     <React.Fragment>
@@ -762,14 +768,7 @@ function ClientsDashboard() {
         <Message header="Error!" content="Unable to load clients" error />
       )}
       <Card.Group itemsPerRow={3}>
-        <Query
-          query={QUERY_CLIENTS}
-          context={{
-            headers: {
-              Authorization: token
-            }
-          }}
-        >
+        <Query query={QUERY_CLIENTS}>
           {({ data, loading, error }) => {
             setError(false);
             if (loading) {
@@ -832,7 +831,6 @@ function PageLoader({ active }) {
 function VehiclesDashboard() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(false);
-  const { token } = AuthContainer.useContainer();
   return (
     <React.Fragment>
       <Link to="/vehicles/create">
@@ -851,14 +849,7 @@ function VehiclesDashboard() {
           </Table.Row>
         </Table.Header>
         <Table.Body>
-          <Query
-            query={QUERY_VEHICLES}
-            context={{
-              headers: {
-                Authorization: token
-              }
-            }}
-          >
+          <Query query={QUERY_VEHICLES}>
             {({ data, loading, error }) => {
               setError(false);
               if (loading) {
@@ -1034,7 +1025,6 @@ function ClientJobDetails({ fieldsRef }) {
 }
 
 function ClientRegistrationForm({ children }) {
-  const { token } = AuthContainer.useContainer();
   const fieldsRef = React.useRef([]);
   fieldsRef.current = [];
   const clientRegistrationForm = useForm({
@@ -1043,14 +1033,7 @@ function ClientRegistrationForm({ children }) {
   });
   return (
     <Grid.Column style={{ padding: '1rem' }}>
-      <Mutation
-        mutation={MUTATION_ADD_CLIENT}
-        context={{
-          headers: {
-            Authorization: token
-          }
-        }}
-      >
+      <Mutation mutation={MUTATION_ADD_CLIENT}>
         {(addClient, { loading, data }) => {
           if (data && data.addClient && data.addClient.id) {
             navigate('/clients');
