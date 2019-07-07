@@ -417,10 +417,10 @@ const resolvers = {
       const validation = await dataSources.mailer.validateEmail(email);
       if (validation && validation.result === 'deliverable') {
         const sent = await dataSources.mailer.sendEmail({
-          from: 'Car rental saas tool <noreply@carrentalsaastool.com>',
+          from: 'Carzi <noreply@carzi.io>',
           to: email,
-          subject: 'Hello',
-          text: 'Hello human'
+          subject: 'Welcome to Carzi',
+          text: 'Welcome to Carzi!'
         });
         if (sent && sent.message.includes('Queued')) {
           const account = await dataSources.accounts.register(email, password);
