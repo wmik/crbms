@@ -438,7 +438,13 @@ function TopNavigation() {
   const { setToken } = AuthContainer.useContainer();
   return (
     <Menu fluid>
-      <Menu.Item content="Application" header />
+      <Menu.Item
+        content="Carzi"
+        header
+        link
+        href="/"
+        style={{ letterSpacing: 6, fontSize: 16 }}
+      />
       <Menu.Item position="right">
         <Dropdown icon="cog" direction="left">
           <Dropdown.Menu
@@ -605,6 +611,7 @@ const QUERY_JOBS = gql`
 
 function JobsDashboard() {
   const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState(false);
   const { token } = AuthContainer.useContainer();
   return (
     <React.Fragment>
@@ -612,6 +619,7 @@ function JobsDashboard() {
         <Button content="Create new job" />
       </Link>
       <PageLoader active={loading} />
+      {error && <Message header="Error!" content="Unable to load jobs" error />}
       <Table sortable celled fixed selectable>
         <Table.Header>
           <Table.Row>
@@ -630,11 +638,13 @@ function JobsDashboard() {
             }}
           >
             {({ data, loading, error }) => {
+              setError(false);
               if (loading) {
                 setLoading(true);
               }
               if (error) {
                 setLoading(false);
+                setError(true);
                 return null;
               }
               if (data && data.jobs && data.jobs.results) {
@@ -741,12 +751,16 @@ const QUERY_CLIENTS = gql`
 
 function ClientsDashboard() {
   const { token } = AuthContainer.useContainer();
+  const [error, setError] = React.useState(false);
   return (
     <React.Fragment>
       <Link to="/clients/create">
         <Button content="Create new client" />
       </Link>
       <Divider />
+      {error && (
+        <Message header="Error!" content="Unable to load clients" error />
+      )}
       <Card.Group itemsPerRow={3}>
         <Query
           query={QUERY_CLIENTS}
@@ -757,6 +771,7 @@ function ClientsDashboard() {
           }}
         >
           {({ data, loading, error }) => {
+            setError(false);
             if (loading) {
               return (
                 <Map array={Array.from({ length: 3 }, _ => ({}))}>
@@ -765,6 +780,7 @@ function ClientsDashboard() {
               );
             }
             if (error) {
+              setError(true);
               return null;
             }
             if (data && data.clients && data.clients.results) {
@@ -815,6 +831,7 @@ function PageLoader({ active }) {
 
 function VehiclesDashboard() {
   const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState(false);
   const { token } = AuthContainer.useContainer();
   return (
     <React.Fragment>
@@ -822,6 +839,9 @@ function VehiclesDashboard() {
         <Button content="Add a new vehicle" />
       </Link>
       <PageLoader active={loading} />
+      {error && (
+        <Message header="Error!" content="Unable to load vehicles" error />
+      )}
       <Table sortable celled fixed selectable>
         <Table.Header>
           <Table.Row>
@@ -840,11 +860,13 @@ function VehiclesDashboard() {
             }}
           >
             {({ data, loading, error }) => {
+              setError(false);
               if (loading) {
                 setLoading(true);
               }
               if (error) {
                 setLoading(false);
+                setError(true);
                 return null;
               }
               if (data && data.vehicles && data.vehicles.results) {
