@@ -57,7 +57,7 @@ function withTransformToKeysCamelCase(resolver) {
       );
     }
     if (typeof result === 'object') {
-      return map(result, transformKeysCamelCase);
+      return map(result, transformKeysToCamelCase);
     }
   };
 }
@@ -463,19 +463,25 @@ const resolvers = {
     )
   },
   Mutation: {
-    addClient: withAuthentication((_, { data }, { dataSources, req }) =>
-      dataSources.clients.insertOne(
-        Object.assign({}, data, { account_id: req.session.user.account_id })
+    addClient: withAuthentication(
+      withTransformToKeysCamelCase((_, { data }, { dataSources, req }) =>
+        dataSources.clients.insertOne(
+          Object.assign({}, data, { account_id: req.session.user.account_id })
+        )
       )
     ),
-    addVehicle: withAuthentication((_, { data }, { dataSources, req }) =>
-      dataSources.vehicles.insertOne(
-        Object.assign({}, data, { account_id: req.session.user.account_id })
+    addVehicle: withAuthentication(
+      withTransformToKeysCamelCase((_, { data }, { dataSources, req }) =>
+        dataSources.vehicles.insertOne(
+          Object.assign({}, data, { account_id: req.session.user.account_id })
+        )
       )
     ),
-    addJob: withAuthentication((_, { data }, { dataSources, req }) =>
-      dataSources.jobs.insertOne(
-        Object.assign({}, data, { account_id: req.session.user.account_id })
+    addJob: withAuthentication(
+      withTransformToKeysCamelCase((_, { data }, { dataSources, req }) =>
+        dataSources.jobs.insertOne(
+          Object.assign({}, data, { account_id: req.session.user.account_id })
+        )
       )
     )
   },
