@@ -1014,8 +1014,9 @@ function ClientJobDetails({ fieldsRef }) {
 function ClientRegistrationForm({ children }) {
   const { token } = AuthContainer.useContainer();
   const fieldsRef = React.useRef([]);
+  fieldsRef.current = [];
   const clientRegistrationForm = useForm({
-    fields: fieldsRef.current,
+    fields: fieldsRef.current.map(ref => ref.current.field),
     onSubmit: () => {}
   });
   return (
@@ -1029,7 +1030,7 @@ function ClientRegistrationForm({ children }) {
         }}
       >
         {(addClient, { loading, data }) => {
-          if (data && data.addClient.id) {
+          if (data && data.addClient && data.addClient.id) {
             navigate('/clients');
           }
           return (
