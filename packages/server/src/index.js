@@ -56,9 +56,10 @@ function withTransformToKeysCamelCase(resolver) {
         typeof value === 'object' ? map(value, transformKeysToCamelCase) : value
       );
     }
-    if (typeof result === 'object') {
+    if (typeof result === 'object' && result !== null) {
       return map(result, transformKeysToCamelCase);
     }
+    return result;
   };
 }
 
