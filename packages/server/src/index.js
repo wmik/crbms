@@ -75,6 +75,9 @@ const context = ({ req }) => {
 };
 
 const typeDefs = gql`
+  interface Node {
+    id: ID!
+  }
   """
   Pagination object
   """
@@ -129,7 +132,7 @@ const typeDefs = gql`
   """
   Client details
   """
-  type Client {
+  type Client implements Node {
     """
     Unique identifier
     """
@@ -237,7 +240,7 @@ const typeDefs = gql`
   """
   Vehicle details
   """
-  type Vehicle {
+  type Vehicle implements Node {
     """
     Unique identifier
     """
@@ -309,7 +312,7 @@ const typeDefs = gql`
   """
   Job details
   """
-  type Job {
+  type Job implements Node {
     """
     Unique identifier
     """
@@ -390,6 +393,10 @@ const typeDefs = gql`
     Jobs
     """
     jobs(offset: Int, limit: Int): JobsPage
+    """
+    Node
+    """
+    node(id: ID!, typename: String!): Node
   }
 
   """
@@ -460,6 +467,47 @@ const resolvers = {
             )
         )
       )
+    ),
+    node: withAuthentication(
+      withTransformToKeysCamelCase(
+        async (_, { id, typename }, { dataSources, req }) => {
+          const createQueryObject = type => ({
+            [`${type}_id`]: id,
+            account_id: req.session.user.account_id
+          });
+          let result;
+          const limit = 1;
+          const offset = 0;
+          if (typename === 'Client') {
+            [result = null] = await dataSources.clients.findAll(
+              createQueryObject('client'),
+              {
+                limit,
+                offset
+              }
+            );
+          }
+          if (typename === 'Job') {
+            [result = null] = await dataSources.jobs.findAll(
+              createQueryObject('job'),
+              {
+                limit,
+                offset
+              }
+            );
+          }
+          if (typename === 'Vehicle') {
+            [result = null] = await dataSources.vehicles.findAll(
+              createQueryObject('vehicle'),
+              {
+                limit,
+                offset
+              }
+            );
+          }
+          return result;
+        }
+      )
     )
   },
   Mutation: {
@@ -496,6 +544,19 @@ const resolvers = {
   },
   Job: {
     id: data => data.jobId
+  },
+  Node: {
+    __resolveType: data => {
+      if (data.jobId) {
+        return 'Job';
+      }
+      if (data.clientId) {
+        return 'Client';
+      }
+      if (data.vehicleId) {
+        return 'Vehicle';
+      }
+    }
   }
 };
 
