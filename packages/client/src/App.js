@@ -1163,11 +1163,55 @@ function JobsPage() {
   );
 }
 
+const QUERY_SINGLE_CLIENT = gql`
+  query SingleClient($id: ID!) {
+    node(id: $id, typename: "Client") {
+      ... on Client {
+        id
+        firstName
+        lastName
+        type
+      }
+    }
+  }
+`;
+
+function SingleClientPage({ id }) {
+  return (
+    <Query query={QUERY_SINGLE_CLIENT} variables={{ id }}>
+      {({ data, loading, error }) => {
+        if (loading) {
+          return <PageLoader active={loading} />;
+        }
+        if (error) {
+          return (
+            <Message
+              header="Error!"
+              content="Unable to load client profile"
+              error
+            />
+          );
+        }
+        if (data && data.node) {
+          const { firstName, lastName } = data.node;
+          return (
+            <React.Fragment>
+              <Header content={`${firstName} ${lastName}`} size="huge" />
+              <Divider />
+            </React.Fragment>
+          );
+        }
+      }}
+    </Query>
+  );
+}
+
 function ClientsPage() {
   return (
     <Router>
       <ClientsDashboard default />
       <ClientRegistrationForm path="create" />
+      <SingleClientPage path=":id" />
     </Router>
   );
 }
