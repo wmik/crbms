@@ -517,6 +517,9 @@ function SideMenu() {
             <Menu.Item>
               <Link to="/settings/app">Application</Link>
             </Menu.Item>
+            <Menu.Item>
+              <Link to="/settings/account">Account</Link>
+            </Menu.Item>
           </Menu.Menu>
         </Menu.Item>
       </Menu>
@@ -568,7 +571,7 @@ function MobileMenu() {
         >
           <Dropdown.Menu>
             <Dropdown.Item>
-              <Link to="/settings/application">Application</Link>
+              <Link to="/settings/app">Application</Link>
             </Dropdown.Item>
             <Dropdown.Item>
               <Link to="/settings/account">Account</Link>
