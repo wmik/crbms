@@ -41,6 +41,7 @@ exports.up = function(knex) {
           enumName: 'client_type'
         })
         .defaultTo('individual');
+      table.jsonb('organization').defaultTo(null);
       table
         .integer('account_id')
         .unsigned()
