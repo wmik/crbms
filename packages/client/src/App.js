@@ -686,17 +686,21 @@ function Summary() {
   );
 }
 
-function JobDetailsRow({ clientId, vehicleIds, startDate, endDate }) {
+function JobDetailsRow({ client, vehicles, startDate, endDate }) {
   return (
     <Table.Row>
-      <Table.Cell>{clientId}</Table.Cell>
+      <Table.Cell>
+        {client.firstName} {client.lastName}
+      </Table.Cell>
       <Table.Cell>
         {dayjs(parseInt(endDate))
           .from(dayjs(parseInt(startDate)))
           .replace('in', '')
           .trim()}
       </Table.Cell>
-      <Table.Cell>{vehicleIds.join(',')}</Table.Cell>
+      <Table.Cell>
+        {vehicles.results.map(vehicle => vehicle.license).join(',')}
+      </Table.Cell>
     </Table.Row>
   );
 }
@@ -706,8 +710,15 @@ const QUERY_JOBS = gql`
     jobs {
       results {
         id
-        clientId
-        vehicleIds
+        client {
+          firstName
+          lastName
+        }
+        vehicles {
+          results {
+            license
+          }
+        }
         startDate
         endDate
       }
@@ -718,19 +729,23 @@ const QUERY_JOBS = gql`
 function JobsDashboard() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(false);
+  const [empty, setEmpty] = React.useState(false);
   return (
     <React.Fragment>
       <Link to="/jobs/create">
         <Button content="Create new job" />
       </Link>
+      <Divider />
       <PageLoader active={loading} />
-      {error && <Message header="Error!" content="Unable to load jobs" error />}
+      <If condition={error}>
+        <Message header="Error!" content="Unable to load jobs" error />
+      </If>
       <Table sortable celled fixed selectable>
         <Table.Header>
           <Table.Row>
             <Table.HeaderCell>Client name</Table.HeaderCell>
             <Table.HeaderCell>Total duration</Table.HeaderCell>
-            <Table.HeaderCell>Vehicle license plate</Table.HeaderCell>
+            <Table.HeaderCell>Vehicle license plates</Table.HeaderCell>
           </Table.Row>
         </Table.Header>
         <Table.Body>
@@ -745,7 +760,12 @@ function JobsDashboard() {
                 setError(true);
                 return null;
               }
-              if (data && data.jobs && data.jobs.results) {
+              if (
+                data &&
+                data.jobs &&
+                data.jobs.results &&
+                data.jobs.results.length > 0
+              ) {
                 setLoading(false);
                 return (
                   <Map array={data.jobs.results}>
@@ -753,11 +773,16 @@ function JobsDashboard() {
                   </Map>
                 );
               }
+              setLoading(false);
+              setEmpty(true);
               return null;
             }}
           </Query>
         </Table.Body>
       </Table>
+      <If condition={empty}>
+        <NoData />
+      </If>
     </React.Fragment>
   );
 }
@@ -847,8 +872,23 @@ const QUERY_CLIENTS = gql`
   }
 `;
 
+function NoData() {
+  return (
+    <Segment placeholder>
+      <Header icon>
+        <Icon name="eye slash" />
+        Looks like there is nothing to see here.
+        <Header sub style={{ textTransform: 'none' }}>
+          Get started by clicking on the button above to add some data.
+        </Header>
+      </Header>
+    </Segment>
+  );
+}
+
 function ClientsDashboard() {
   const [error, setError] = React.useState(false);
+  const [empty, setEmpty] = React.useState(false);
   return (
     <React.Fragment>
       <Link to="/clients/create">
@@ -858,6 +898,8 @@ function ClientsDashboard() {
       {error && (
         <Message header="Error!" content="Unable to load clients" error />
       )}
+      {empty && <NoData />}
+      {}
       <Card.Group itemsPerRow={3} stackable>
         <Query query={QUERY_CLIENTS}>
           {({ data, loading, error }) => {
@@ -873,13 +915,19 @@ function ClientsDashboard() {
               setError(true);
               return null;
             }
-            if (data && data.clients && data.clients.results) {
+            if (
+              data &&
+              data.clients &&
+              data.clients.results &&
+              data.clients.results.length > 0
+            ) {
               return (
                 <Map array={data.clients.results}>
                   <ClientDetailsCard />
                 </Map>
               );
             }
+            setEmpty(true);
             return null;
           }}
         </Query>
@@ -945,14 +993,19 @@ function PageLoader({ active }) {
 
 function VehiclesDashboard() {
   const [error, setError] = React.useState(false);
+  const [empty, setEmpty] = React.useState(false);
   return (
     <React.Fragment>
       <Link to="/vehicles/create">
         <Button content="Add a new vehicle" />
       </Link>
-      {error && (
+      <Divider />
+      <If condition={error}>
         <Message header="Error!" content="Unable to load vehicles" error />
-      )}
+      </If>
+      <If condition={empty}>
+        <NoData />
+      </If>
       <Query query={QUERY_VEHICLES}>
         {({ data, loading, error }) => {
           setError(false);
@@ -967,13 +1020,19 @@ function VehiclesDashboard() {
             setError(true);
             return null;
           }
-          if (data && data.vehicles && data.vehicles.results) {
+          if (
+            data &&
+            data.vehicles &&
+            data.vehicles.results &&
+            data.vehicles.results.length > 0
+          ) {
             return (
               <Map array={data.vehicles.results}>
                 <VehicleDetailsCard />
               </Map>
             );
           }
+          setEmpty(true);
           return null;
         }}
       </Query>
