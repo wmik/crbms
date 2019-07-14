@@ -91,9 +91,17 @@ function FormInput({
   error,
   message,
   required,
-  disabled
+  disabled,
+  parseToInt
 }) {
-  const handleChange = e => onChange(e.currentTarget.value);
+  const handleChange = e => {
+    const { value } = e.currentTarget;
+    let parsedValue = value;
+    if (parseToInt && /^\d/.test(value)) {
+      parsedValue = parseInt(value);
+    }
+    onChange(parsedValue);
+  };
   return (
     <React.Fragment>
       {error && <small style={{ color: '#9f3a38' }}>{message}</small>}
@@ -1236,11 +1244,157 @@ function ClientRegistrationForm({ children }) {
   );
 }
 
-function VehicleRegistration() {
+function VehicleMake({ fieldsRef }) {
+  const field = useCustomField({ defaultValue: '' });
+  const ref = React.useRef();
+  ref.current = { name: 'make', field };
+  fieldsRef.current = fieldsRef.current.concat(ref);
+  return <FormInput label="Make" onChange={field.props.onChange} />;
+}
+
+function VehicleModel({ fieldsRef }) {
+  const field = useCustomField({ defaultValue: '' });
+  const ref = React.useRef();
+  ref.current = { name: 'model', field };
+  fieldsRef.current = fieldsRef.current.concat(ref);
+  return <FormInput label="Model" onChange={field.props.onChange} />;
+}
+
+function VehicleLicense({ fieldsRef }) {
+  const field = useCustomField({ defaultValue: '' });
+  const ref = React.useRef();
+  ref.current = { name: 'license', field };
+  fieldsRef.current = fieldsRef.current.concat(ref);
   return (
-    <Grid.Column style={{ padding: '1rem' }}>
-      <Form />
-    </Grid.Column>
+    <FormInput label="License plate number" onChange={field.props.onChange} />
+  );
+}
+
+function VehicleFuel({ fieldsRef }) {
+  const field = useCustomField({ defaultValue: 0 });
+  const ref = React.useRef();
+  ref.current = { name: 'fuelCapacityMax', field };
+  fieldsRef.current = fieldsRef.current.concat(ref);
+  return (
+    <FormInput
+      label="Maximum fuel capacity"
+      type="number"
+      onChange={field.props.onChange}
+      parseToInt={true}
+    />
+  );
+}
+
+function VehiclePassengers({ fieldsRef }) {
+  const field = useCustomField({ defaultValue: 0 });
+  const ref = React.useRef();
+  ref.current = { name: 'passengers', field };
+  fieldsRef.current = fieldsRef.current.concat(ref);
+  return (
+    <FormInput
+      label="Total passengers"
+      type="number"
+      onChange={field.props.onChange}
+      parseToInt={true}
+    />
+  );
+}
+
+function VehiclePriceCurrencyCode({ fieldsRef }) {
+  const field = useField({ defaultValue: '' });
+  const ref = React.useRef();
+  ref.current = { name: 'hirePricing.currencyCode', field };
+  fieldsRef.current = fieldsRef.current.concat(ref);
+  return (
+    <Form.Select
+      label="Currency code"
+      placeholder="Select currency code"
+      options={Object.keys(require('./Common-currency.json')).map(key => ({
+        key,
+        value: key,
+        text: key
+      }))}
+      width={5}
+      onChange={e => field.props.onChange(e.currentTarget.innerText)}
+      required={field.props.required}
+    />
+  );
+}
+
+function VehiclePriceValue({ fieldsRef }) {
+  const field = useCustomField({ defaultValue: 0 });
+  const ref = React.useRef();
+  ref.current = { name: 'hirePricing.value', field };
+  fieldsRef.current = fieldsRef.current.concat(ref);
+  return (
+    <FormInput
+      label="Hiring price"
+      type="number"
+      onChange={field.props.onChange}
+      parseToInt={true}
+    />
+  );
+}
+
+const MUTATION_ADD_VEHICLE = gql`
+  mutation AddVehicle($data: VehicleInput!) {
+    addVehicle(data: $data) {
+      id
+    }
+  }
+`;
+
+function VehicleRegistrationForm() {
+  const fieldsRef = React.useRef([]);
+  fieldsRef.current = [];
+  const vehicleRegistrationForm = useForm({
+    fields: fieldsRef.current.map(ref => ref.current.field),
+    onSubmit: () => {}
+  });
+  return (
+    <Mutation mutation={MUTATION_ADD_VEHICLE}>
+      {(addVehicle, { loading, data, error }) => {
+        if (data && data.addVehicle && data.addVehicle.id) {
+          navigate('/vehicles');
+        }
+        return (
+          <Grid.Column style={{ padding: '1rem' }}>
+            <Form
+              loading={loading}
+              error={error}
+              onSubmit={e => {
+                e.preventDefault();
+                vehicleRegistrationForm.props.onSubmit();
+                addVehicle({
+                  variables: {
+                    data: fieldsRef.current.reduce((object, ref) => {
+                      if (ref.current.name.includes('.')) {
+                        const [parent, child] = ref.current.name.split('.');
+                        object[parent] = Object.assign({}, object[parent], {
+                          [child]: ref.current.field.value
+                        });
+                      } else {
+                        object[ref.current.name] = ref.current.field.value;
+                      }
+                      return object;
+                    }, {})
+                  }
+                });
+              }}
+            >
+              <VehicleMake fieldsRef={fieldsRef} />
+              <VehicleModel fieldsRef={fieldsRef} />
+              <VehicleLicense fieldsRef={fieldsRef} />
+              <VehicleFuel fieldsRef={fieldsRef} />
+              <VehiclePassengers fieldsRef={fieldsRef} />
+              <VehiclePriceCurrencyCode fieldsRef={fieldsRef} />
+              <VehiclePriceValue fieldsRef={fieldsRef} />
+              <Button type="submit" content="Submit" fluid />
+            </Form>
+          </Grid.Column>
+        );
+      }}
+    </Mutation>
   );
 }
 
@@ -1275,7 +1429,7 @@ function JobRegistrationForm() {
             )
           },
           {
-            render: () => <VehicleRegistration />,
+            render: () => <VehicleRegistrationForm />,
             menuItem: (
               <Step key="vehicle">
                 <Icon name="car" />
@@ -1426,7 +1580,7 @@ function VehiclesPage() {
   return (
     <Router>
       <VehiclesDashboard default />
-      {/* <VehicleRegistrationForm path="create" /> */}
+      <VehicleRegistrationForm path="create" />
       <SingleVehiclePage path=":id" />
     </Router>
   );
