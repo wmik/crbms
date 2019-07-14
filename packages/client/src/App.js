@@ -885,13 +885,37 @@ function ClientsDashboard() {
   );
 }
 
-function VehicleDetailsRow({ make, model, license }) {
+function VehicleDetailsCard({ id, make, model, license }) {
   return (
-    <Table.Row>
-      <Table.Cell>{make}</Table.Cell>
-      <Table.Cell>{model}</Table.Cell>
-      <Table.Cell>{license}</Table.Cell>
-    </Table.Row>
+    <Card>
+      <svg
+        width="100%"
+        height="200"
+        style={{ background: generateRandomRGB() }} //(15, 110, 145) => pastel
+      >
+        <text
+          textAnchor="middle"
+          x="50%"
+          y="50%"
+          dy="2rem"
+          fill="white"
+          fontSize="100"
+        >
+          {model.substring(0, 1)}
+        </text>
+      </svg>
+      <Card.Content>
+        <Card.Header>{license}</Card.Header>
+        <Card.Meta>
+          {make} {model}
+        </Card.Meta>
+      </Card.Content>
+      <Card.Content extra>
+        <Link to={`/vehicles/${id}`}>
+          <Button primary>View</Button>
+        </Link>
+      </Card.Content>
+    </Card>
   );
 }
 
@@ -917,50 +941,39 @@ function PageLoader({ active }) {
 }
 
 function VehiclesDashboard() {
-  const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(false);
   return (
     <React.Fragment>
       <Link to="/vehicles/create">
         <Button content="Add a new vehicle" />
       </Link>
-      <PageLoader active={loading} />
       {error && (
         <Message header="Error!" content="Unable to load vehicles" error />
       )}
-      <Table sortable celled fixed selectable>
-        <Table.Header>
-          <Table.Row>
-            <Table.HeaderCell>Make</Table.HeaderCell>
-            <Table.HeaderCell>Model</Table.HeaderCell>
-            <Table.HeaderCell>License plate</Table.HeaderCell>
-          </Table.Row>
-        </Table.Header>
-        <Table.Body>
-          <Query query={QUERY_VEHICLES}>
-            {({ data, loading, error }) => {
-              setError(false);
-              if (loading) {
-                setLoading(true);
-              }
-              if (error) {
-                setLoading(false);
-                setError(true);
-                return null;
-              }
-              if (data && data.vehicles && data.vehicles.results) {
-                setLoading(false);
-                return (
-                  <Map array={data.vehicles.results}>
-                    <VehicleDetailsRow />
-                  </Map>
-                );
-              }
-              return null;
-            }}
-          </Query>
-        </Table.Body>
-      </Table>
+      <Query query={QUERY_VEHICLES}>
+        {({ data, loading, error }) => {
+          setError(false);
+          if (loading) {
+            return (
+              <Map array={Array.from({ length: 3 }, _ => ({}))}>
+                <LoadingCard />
+              </Map>
+            );
+          }
+          if (error) {
+            setError(true);
+            return null;
+          }
+          if (data && data.vehicles && data.vehicles.results) {
+            return (
+              <Map array={data.vehicles.results}>
+                <VehicleDetailsCard />
+              </Map>
+            );
+          }
+          return null;
+        }}
+      </Query>
     </React.Fragment>
   );
 }
@@ -1304,11 +1317,55 @@ function ClientsPage() {
   );
 }
 
+const QUERY_SINGLE_VEHICLE = gql`
+  query SingleVehicle($id: ID!) {
+    node(id: $id, typename: "Vehicle") {
+      ... on Vehicle {
+        id
+        make
+        model
+        license
+      }
+    }
+  }
+`;
+
+function SingleVehiclePage({ id }) {
+  return (
+    <Query query={QUERY_SINGLE_VEHICLE} variables={{ id }}>
+      {({ data, loading, error }) => {
+        if (loading) {
+          return <PageLoader active={loading} />;
+        }
+        if (error) {
+          return (
+            <Message
+              header="Error!"
+              content="Unable to load client profile"
+              error
+            />
+          );
+        }
+        if (data && data.node) {
+          const { license } = data.node;
+          return (
+            <React.Fragment>
+              <Header content={`${license}`} size="huge" />
+              <Divider />
+            </React.Fragment>
+          );
+        }
+      }}
+    </Query>
+  );
+}
+
 function VehiclesPage() {
   return (
     <Router>
       <VehiclesDashboard default />
       {/* <VehicleRegistrationForm path="create" /> */}
+      <SingleVehiclePage path=":id" />
     </Router>
   );
 }
