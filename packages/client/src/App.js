@@ -22,13 +22,15 @@ import {
   Dimmer,
   Loader,
   Placeholder,
-  Divider
+  Divider,
+  Segment
 } from 'semantic-ui-react';
 import { useField, useForm } from 'react-jeff';
 import { createContainer } from 'unstated-next';
 import useSessionStorage from 'react-use/lib/useSessionStorage';
 import { Router, Link, navigate, Redirect } from '@reach/router';
 import emailValidator from 'email-validator';
+import useWindowSize from 'react-use/lib/useWindowSize';
 
 if (process.env.NODE_ENV !== 'production') {
   console.log('[info]:', 'mounting `why-did-you-render`');
@@ -479,12 +481,24 @@ function TopNavigation() {
     </Menu>
   );
 }
+
 function SideMenu() {
   return (
     <Grid.Column width={4}>
       <Menu vertical>
         <Menu.Item>
-          <Menu.Header content="Dashboard" />
+          <Menu.Header content="Home" />
+          <Menu.Menu>
+            <Menu.Item>
+              <Link to="/">Dashboard</Link>
+            </Menu.Item>
+            <Menu.Item>
+              <Link to="/notifications">Notifications</Link>
+            </Menu.Item>
+          </Menu.Menu>
+        </Menu.Item>
+        <Menu.Item>
+          <Menu.Header content="Records" />
           <Menu.Menu>
             <Menu.Item>
               <Link to="/jobs">Jobs</Link>
@@ -507,6 +521,80 @@ function SideMenu() {
         </Menu.Item>
       </Menu>
     </Grid.Column>
+  );
+}
+
+function MobileMenu() {
+  return (
+    <Menu icon="labeled" fluid widths={4} fixed="bottom">
+      <Menu.Item name="home">
+        <Dropdown pointing="top left" icon={<Icon name="home" size="big" />}>
+          <Dropdown.Menu>
+            <Dropdown.Item>
+              <Link to="/">Dashboard</Link>
+            </Dropdown.Item>
+            <Dropdown.Item>
+              <Link to="/notifications">Notifications</Link>
+            </Dropdown.Item>
+          </Dropdown.Menu>
+        </Dropdown>
+        <p>Home</p>
+      </Menu.Item>
+
+      <Menu.Item name="records">
+        <Dropdown
+          pointing="top left"
+          icon={<Icon name="address book" size="big" />}
+        >
+          <Dropdown.Menu>
+            <Dropdown.Item>
+              <Link to="/jobs">Jobs</Link>
+            </Dropdown.Item>
+            <Dropdown.Item>
+              <Link to="/clients">Clients</Link>
+            </Dropdown.Item>
+            <Dropdown.Item>
+              <Link to="/vehicles">Vehicles</Link>
+            </Dropdown.Item>
+          </Dropdown.Menu>
+        </Dropdown>
+        <p>Records</p>
+      </Menu.Item>
+
+      <Menu.Item name="settings">
+        <Dropdown
+          pointing="top right"
+          icon={<Icon name="settings" size="big" />}
+        >
+          <Dropdown.Menu>
+            <Dropdown.Item>
+              <Link to="/settings/application">Application</Link>
+            </Dropdown.Item>
+            <Dropdown.Item>
+              <Link to="/settings/account">Account</Link>
+            </Dropdown.Item>
+          </Dropdown.Menu>
+        </Dropdown>
+        <p>Settings</p>
+      </Menu.Item>
+      <Menu.Item name="log out">
+        <Link to="/">
+          <Icon name="log out" size="big" />
+          <p>Log out</p>
+        </Link>
+      </Menu.Item>
+    </Menu>
+  );
+}
+
+function Notifications() {
+  return (
+    <Segment placeholder>
+      <Header icon>
+        <Icon name="bell slash" />
+        No new notifications.
+      </Header>
+    </Segment>
   );
 }
 
@@ -767,7 +855,7 @@ function ClientsDashboard() {
       {error && (
         <Message header="Error!" content="Unable to load clients" error />
       )}
-      <Card.Group itemsPerRow={3}>
+      <Card.Group itemsPerRow={3} stackable>
         <Query query={QUERY_CLIENTS}>
           {({ data, loading, error }) => {
             setError(false);
@@ -1233,19 +1321,47 @@ function Content() {
         <JobsPage path="jobs/*" />
         <ClientsPage path="clients/*" />
         <VehiclesPage path="vehicles/*" />
+        <Notifications path="notifications" />
       </Router>
     </Grid.Column>
   );
 }
 
+function If({ condition, children }) {
+  return condition ? children : null;
+}
+
+function Else({ condition, children }) {
+  return !condition ? children : null;
+}
+
+function useMobile() {
+  const { width } = useWindowSize();
+  const [isMobile, setMobile] = React.useState(false);
+  React.useEffect(() => {
+    if (width < 720) {
+      setMobile(true);
+    } else {
+      setMobile(false);
+    }
+  }, [width, setMobile]);
+  return { isMobile };
+}
+
 function Dashboard() {
+  const { isMobile } = useMobile();
   return (
     <Grid stackable padded>
       <Grid.Row verticalAlign="middle">
         <TopNavigation />
       </Grid.Row>
       <Grid.Row>
-        <SideMenu />
+        <If condition={isMobile}>
+          <MobileMenu />
+        </If>
+        <Else condition={isMobile}>
+          <SideMenu />
+        </Else>
         <Content />
       </Grid.Row>
     </Grid>
