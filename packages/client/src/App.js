@@ -1398,10 +1398,59 @@ function VehicleRegistrationForm() {
   );
 }
 
+function JobStartDate({ formRef }) {
+  const field = useField({ defaultValue: '' });
+  const ref = React.useRef();
+  ref.current = { name: 'startDate', field };
+  formRef.current = formRef.current.concat(ref);
+  return (
+    <FormInput
+      icon="calendar alternate outline"
+      iconPosition="left"
+      label="Start Date"
+      type="date"
+      onChange={field.props.onChange}
+      onBlur={field.props.onBlur}
+      onFocus={field.props.onFocus}
+      value={field.props.value}
+    />
+  );
+}
+
+function JobEndDate({ formRef }) {
+  const field = useField({ defaultValue: '' });
+  const ref = React.useRef();
+  ref.current = { name: 'endDate', field };
+  formRef.current = formRef.current.concat(ref);
+  return (
+    <FormInput
+      iconPosition="left"
+      icon="calendar alternate outline"
+      label="End Date"
+      type="date"
+      onChange={field.props.onChange}
+      onBlur={field.props.onBlur}
+      onFocus={field.props.onFocus}
+      value={field.props.value}
+    />
+  );
+}
+
 function BillingForm() {
+  const formRef = React.useRef();
+  formRef.current = [];
   return (
     <Grid.Column style={{ padding: '1rem' }}>
-      <Form />
+      <Form>
+        <style>{`
+        input[type="date"]::-webkit-clear-button { display: none; }
+        input[type="date"]::-webkit-inner-spin-button { display: none; }
+        `}</style>
+        <Form.Group widths="equal">
+          <JobStartDate formRef={formRef} />
+          <JobEndDate formRef={formRef} />
+        </Form.Group>
+      </Form>
     </Grid.Column>
   );
 }
