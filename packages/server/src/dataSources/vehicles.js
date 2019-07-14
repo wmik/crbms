@@ -25,6 +25,17 @@ class Vehicles extends KnexDataSource {
       debug(err);
     }
   }
+  async findMany(queryObject, pagination, values, key) {
+    try {
+      const vehicles = await this.find(queryObject)
+        .whereIn(key, values)
+        .limit(pagination.limit)
+        .offset(pagination.offset);
+      return vehicles;
+    } catch (err) {
+      debug(err);
+    }
+  }
 }
 
 export default Vehicles;

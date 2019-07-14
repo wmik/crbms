@@ -321,11 +321,11 @@ const typeDefs = gql`
     """
     Unique client identifier
     """
-    clientId: ID!
+    client: Client
     """
     Unique vehicle identifiers
     """
-    vehicleIds: [ID!]
+    vehicles: VehiclesPage
     """
     Start date
     """
@@ -544,7 +544,30 @@ const resolvers = {
     id: data => data.vehicleId
   },
   Job: {
-    id: data => data.jobId
+    id: data => data.jobId,
+    client: withTransformToKeysCamelCase(
+      async (data, _, { dataSources, req }) => {
+        const [client = null] = await dataSources.clients.findAll(
+          {
+            client_id: data.clientId,
+            account_id: req.session.user.account_id
+          },
+          { limit: 1 }
+        );
+        return client;
+      }
+    ),
+    vehicles: withPagination(
+      withTransformToKeysCamelCase(
+        (data, { offset = 0, limit = 5 }, { dataSources, req }) =>
+          dataSources.vehicles.findMany(
+            { account_id: req.session.user.account_id },
+            { offset, limit },
+            data.vehicleIds,
+            'vehicle_id'
+          )
+      )
+    )
   },
   Node: {
     __resolveType: data => {
