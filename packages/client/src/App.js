@@ -31,6 +31,7 @@ import useSessionStorage from 'react-use/lib/useSessionStorage';
 import { Router, Link, navigate, Redirect } from '@reach/router';
 import emailValidator from 'email-validator';
 import useWindowSize from 'react-use/lib/useWindowSize';
+import { Helmet } from 'react-helmet'
 
 if (process.env.NODE_ENV !== 'production') {
   console.log('[info]:', 'mounting `why-did-you-render`');
@@ -1700,6 +1701,8 @@ function HomePage() {
 
 function App() {
   return (
+    <React.Fragment>
+    <Helmet><title>Carzi - Manage your car business from anywhere</title></Helmet>
     <ApolloProvider client={client}>
       <AuthContainer.Provider>
         <Router>
@@ -1709,6 +1712,7 @@ function App() {
         </Router>
       </AuthContainer.Provider>
     </ApolloProvider>
+    </React.Fragment>
   );
 }
 
