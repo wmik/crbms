@@ -1,4 +1,6 @@
-> # car-rental-saas-tool
+# Carzi
+
+> A car rental saas tool application
 
 ## Build
 
