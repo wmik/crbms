@@ -15,7 +15,7 @@
     "datasource-sql": "^0.1.7",
     "express": "^4.17.1",
     "graphql": "^14.3.1",
-    "jsonwebtoken": "^8.5.1",
+    "jsonwebtoken": "^9.0.0",
     "knex": "^0.17.6",
     "node-rsa": "^1.0.5",
     "nodemon": "^1.19.1",
